@@ -35,10 +35,15 @@ with st.form("client_form"):
             "Niche": niche
         }
         df = pd.concat([df, pd.DataFrame([new_entry])], ignore_index=True)
+        df.drop_duplicates(subset=["Name", "Email"], keep="last", inplace=True)
+        df.sort_values(by="Timestamp", ascending=False, inplace=True)
         df.to_csv(FILENAME, index=False)
         st.success("✅ Client added successfully!")
 
-# --- Search Bar ---
+# --- Always reload the latest data from file before showing the table ---
+if os.path.exists(FILENAME):
+    df = pd.read_csv(FILENAME)
+
 st.header("📋 Client List")
 search = st.text_input("🔍 Search by Name or Niche")
 if search:
@@ -72,7 +77,7 @@ grid_response = AgGrid(
 selected = grid_response['selected_rows']
 
 # --- Edit and Delete Buttons ---
-if selected:
+if isinstance(selected, list) and len(selected) > 0:
     selected_row = selected[0]
     st.write(f"Selected: **{selected_row['Name']}** | {selected_row['Email']} | {selected_row['Purpose']}")
     col1, col2 = st.columns(2)
@@ -91,6 +96,8 @@ if st.session_state.get('delete_row') is not None:
             idx = df[(df['Timestamp'] == st.session_state.delete_row['Timestamp']) & (df['Name'] == st.session_state.delete_row['Name'])].index
             if not idx.empty:
                 df.drop(idx, inplace=True)
+                df.drop_duplicates(subset=["Name", "Email"], keep="last", inplace=True)
+                df.sort_values(by="Timestamp", ascending=False, inplace=True)
                 df.to_csv(FILENAME, index=False)
                 st.success("Client deleted.")
             st.session_state.delete_row = None
